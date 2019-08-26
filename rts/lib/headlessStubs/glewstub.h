@@ -14,8 +14,8 @@
 #endif
 
 #if defined(__APPLE__)
-	#include <OpenGL/glu.h>
-	#include <OpenGL/glext.h>
+	#include <GL/glu.h>
+	#include <GL/glext.h>
 #else
 	#include <GL/glu.h>
 	#include <GL/glext.h>
