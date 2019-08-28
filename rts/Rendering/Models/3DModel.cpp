@@ -96,6 +96,11 @@ float3 S3DModelPiece::GetEmitDir() const
 
 void S3DModelPiece::CreateShatterPieces()
 {
+	// Creating shatter pieces crashes on macOS, so we'll skip that for now
+	#ifdef __APPLE__
+	return;
+	#endif
+	
 	if (!HasGeometryData())
 		return;
 
