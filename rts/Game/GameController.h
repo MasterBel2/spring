@@ -7,9 +7,14 @@
 
 #include "ConsoleHistory.h"
 #include "GameControllerTextInput.h"
+class Renderer;
+extern Renderer* pRenderer;
 
 class CGameController
 {
+public:
+	static void SetActiveController(CGameController* controller);
+	static CGameController* GetActiveController();
 public:
 	virtual ~CGameController();
 
@@ -21,7 +26,5 @@ public:
 	virtual int TextEditing(const std::string& utf8Text, unsigned int start, unsigned int length) { return 0; }
 	virtual void ResizeEvent() {}
 };
-
-extern CGameController* activeController;
 
 #endif // _GAME_CONTROLLER_H_

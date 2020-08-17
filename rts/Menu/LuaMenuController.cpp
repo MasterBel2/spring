@@ -70,7 +70,7 @@ bool CLuaMenuController::Activate(const std::string& msg)
 		return false;
 
 	assert(Valid());
-	activeController = luaMenuController;
+	CGameController::SetActiveController(luaMenuController);
 
 	mouse->ShowMouse();
 	luaMenu->ActivateMenu(msg);

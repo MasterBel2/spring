@@ -5,7 +5,6 @@
 #include <functional>
 #include <iostream>
 
-#include <SDL.h>
 #include <gflags/gflags.h>
 
 #ifdef _WIN32
@@ -21,12 +20,9 @@
 #undef GrayScale
 #endif
 
-
-#include "Rendering/GL/myGL.h"
+#include "Rendering/Renderer/Renderer.h"
+#include "Rendering/Renderer/GL/GLRenderer.h"
 #include "System/SpringApp.h"
-#ifndef HEADLESS
-#include "aGui/Gui.h"
-#endif
 #include "ExternalAI/AILibraryManager.h"
 #include "Game/CameraHandler.h"
 #include "Game/ClientSetup.h"
@@ -46,13 +42,6 @@
 #include "Menu/SelectMenu.h"
 #include "Net/GameServer.h"
 #include "Net/Protocol/NetProtocol.h" // clientNet
-#include "Rendering/GlobalRendering.h"
-#include "Rendering/Fonts/glFont.h"
-#include "Rendering/GL/FBO.h"
-#include "Rendering/Shaders/ShaderHandler.h"
-#include "Rendering/Textures/Bitmap.h"
-#include "Rendering/Textures/NamedTextures.h"
-#include "Rendering/Textures/TextureAtlas.h"
 #include "Sim/Misc/DefinitionTag.h" // DefType
 #include "Sim/Misc/GlobalSynced.h"
 #include "Sim/Misc/ModInfo.h"
@@ -64,7 +53,6 @@
 #include "System/SpringMath.h"
 #include "System/MsgStrings.h"
 #include "System/SafeUtil.h"
-#include "System/SplashScreen.hpp"
 #include "System/SpringExitCode.h"
 #include "System/StartScriptGen.h"
 #include "System/TimeProfiler.h"
@@ -110,9 +98,6 @@ CONFIG(std::string, SplashScreenDir).defaultValue(".");
 
 DEFINE_bool_EX  (sync_version,       "sync-version",       false, "Display program sync version (for online gaming)");
 DEFINE_bool_EX  (gen_fontconfig,     "gen-fontconfig",     false, "Generate font-configuration database");
-DEFINE_bool     (fullscreen,                               false, "Run in fullscreen mode");
-DEFINE_bool     (window,                                   false, "Run in windowed mode");
-DEFINE_bool     (hidden,                                   false, "Start in background (minimised, no taskbar entry)");
 DEFINE_bool     (nocolor,                                  false, "Disables colorized stdout");
 DEFINE_string   (server,                                   "",    "Set listening IP for server");
 DEFINE_bool     (textureatlas,                             false, "Dump each finalized textureatlas in textureatlasN.tga");
@@ -142,8 +127,6 @@ int spring::exitCode = spring::EXIT_CODE_SUCCESS;
 
 static unsigned int reloadCount = 0;
 static unsigned int killedCount = 0;
-
-
 
 // initialize basic systems for command line help / output
 static void ConsolePrintInitialize(const std::string& configSource, bool safemode)
@@ -212,8 +195,11 @@ bool SpringApp::Init()
 	SpringMath::Init();
 	LuaMemPool::InitStatic(configHandler->GetBool("UseLuaMemPools"));
 
-	CGlobalRendering::InitStatic();
-	globalRendering->SetFullScreen(FLAGS_window, FLAGS_fullscreen);
+	#ifdef HEADLESS
+	pRenderer = new HeadlessRenderer();
+	#else 
+	pRenderer = new GLRenderer();
+	#endif
 
 	if (!InitPlatformLibs())
 		return false;
@@ -228,27 +214,11 @@ bool SpringApp::Init()
 	Watchdog::RegisterThread(WDT_MAIN, true);
 
 	// Create Window
-	if (!InitWindow(("Spring " + SpringVersion::GetSync()).c_str())) {
-		SDL_Quit();
+	if (!pRenderer->InitWindow(("Spring " + SpringVersion::GetSync()).c_str())) {
 		return false;
 	}
 
-	// Init OpenGL
-	globalRendering->PostInit();
-	globalRendering->UpdateGLConfigs();
-	globalRendering->UpdateGLGeometry();
-	globalRendering->InitGLState();
-
-	GL::SetAttribStatePointer(true);
-	GL::SetMatrixStatePointer(true);
-
-	CCameraHandler::InitStatic();
-	CBitmap::InitPool(configHandler->GetInt("TextureMemPoolSize"));
-
-	UpdateInterfaceGeometry();
-	CglFont::LoadConfigFonts();
-
-	ClearScreen();
+	pRenderer->PostWindowInit();
 
 	if (!InitFileSystem())
 		return false;
@@ -260,20 +230,12 @@ bool SpringApp::Init()
 	CInfoConsole::InitStatic();
 	CMouseHandler::InitStatic();
 
-	input.AddHandler(std::bind(&SpringApp::MainEventHandler, this, std::placeholders::_1));
-
 	// Global structures
 	gs->Init();
 	gu->Init();
 
-	// GUIs
-	#ifndef HEADLESS
-	agui::gui = new agui::Gui();
-	#endif
 	keyCodes.Reset();
 
-	CNamedTextures::Init();
-	LuaOpenGL::Init();
 	ISound::Initialize(false);
 
 	// Lua socket restrictions
@@ -333,9 +295,9 @@ bool SpringApp::InitFileSystem()
 
 	#ifndef HEADLESS
 	if (!splashScreenFiles.empty()) {
-		ShowSplashScreen(splashScreenFiles[ guRNG.NextInt(splashScreenFiles.size()) ], SpringVersion::GetFull(), [&]() { return (FileSystemInitializer::Initialized()); });
+		pRenderer->_ShowSplashScreen(splashScreenFiles[ guRNG.NextInt(splashScreenFiles.size()) ], SpringVersion::GetFull(), [&]() { return (FileSystemInitializer::Initialized()); });
 	} else {
-		ShowSplashScreen("", SpringVersion::GetFull(), [&]() { return (FileSystemInitializer::Initialized()); });
+		pRenderer->_ShowSplashScreen("", SpringVersion::GetFull(), [&]() { return (FileSystemInitializer::Initialized()); });
 	}
 
 	// skip hangs while waiting for the popup to die and kill us
@@ -349,51 +311,6 @@ bool SpringApp::InitFileSystem()
 	// see InputHandler::PushEvents
 	streflop::streflop_init<streflop::Simple>();
 	return ret;
-}
-
-/**
- * @return whether window initialization succeeded
- * @param title char* string with window title
- *
- * Initializes the game window
- */
-bool SpringApp::InitWindow(const char* title)
-{
-	// SDL will cause a creation of gpu-driver thread that will clone its name from the starting threads (= this one = mainthread)
-	Threading::SetThreadName("gpu-driver");
-
-	// raises an error-prompt in case of failure
-	if (!globalRendering->CreateWindowAndContext(title, FLAGS_hidden))
-		return false;
-
-	// Something in SDL_SetVideoMode (OpenGL drivers?) messes with the FPU control word.
-	// Set single precision floating point math.
-	streflop::streflop_init<streflop::Simple>();
-
-	// any other thread spawned from the main-process should be `unknown`
-	Threading::SetThreadName("unknown");
-	return true;
-}
-
-
-/**
- * Saves position of the window, if we are not in full-screen mode
- */
-void SpringApp::SaveWindowPosAndSize()
-{
-	globalRendering->ReadWindowPosAndSize();
-	globalRendering->SaveWindowPosAndSize();
-}
-
-
-void SpringApp::UpdateInterfaceGeometry()
-{
-	#ifndef HEADLESS
-	const int vpx = globalRendering->viewPosX;
-	const int vpy = globalRendering->winSizeY - globalRendering->viewSizeY - globalRendering->viewPosY;
-
-	agui::gui->UpdateScreenGeometry(globalRendering->viewSizeX, globalRendering->viewSizeY, vpx, vpy);
-	#endif
 }
 
 
@@ -416,7 +333,7 @@ void SpringApp::ParseCmdLine(int argc, char* argv[])
 #endif
 
 	if (FLAGS_gen_fontconfig) {
-		CFontTexture::GenFontConfig();
+		// CFontTexture::GenFontConfig();
 		exit(spring::EXIT_CODE_SUCCESS);
 	}
 
@@ -472,7 +389,7 @@ void SpringApp::ParseCmdLine(int argc, char* argv[])
 		exit(spring::EXIT_CODE_SUCCESS);
 	}
 
-	CTextureAtlas::SetDebug(FLAGS_textureatlas);
+	// CTextureAtlas::SetDebug(FLAGS_textureatlas);
 
 	// if this fails, configHandler remains null
 	// logOutput's init depends on configHandler
@@ -545,7 +462,7 @@ void SpringApp::StartScript(const std::string& script)
 	if (!fh.LoadStringData(buf))
 		throw content_error("Setup-script cannot be read: " + script);
 
-	activeController = RunScript(buf);
+	CGameController::SetActiveController(RunScript(buf));
 }
 
 void SpringApp::LoadSpringMenu()
@@ -567,7 +484,7 @@ void SpringApp::LoadSpringMenu()
 			"Please supply a start-script, save- or demo-file.", "ERROR", MBF_OK | MBF_EXCL);
 		#else
 		// not a memory-leak: SelectMenu deletes itself on start
-		activeController = new SelectMenu(clientSetup);
+		CGameController::SetActiveController(new SelectMenu(clientSetup));
 		#endif
 	} else {
 		// run custom menu from game and map
@@ -603,7 +520,7 @@ void SpringApp::Startup()
 
 		if ((!FLAGS_game.empty()) && (!FLAGS_map.empty())) {
 			// --game and --map directly specified, try to run them
-			activeController = RunScript(StartScriptGen::CreateMinimalSetup(FLAGS_game, FLAGS_map));
+			CGameController::SetActiveController(RunScript(StartScriptGen::CreateMinimalSetup(FLAGS_game, FLAGS_map)));
 			return;
 		}
 
@@ -691,22 +608,7 @@ void SpringApp::Reload(const std::string script)
 
 	LOG("[SpringApp::%s][7]", __func__);
 
-	CNamedTextures::Kill();
-	CNamedTextures::Init();
-
-	shaderHandler->ClearShaders(false);
-
-	LuaOpenGL::Free();
-	LuaOpenGL::Init();
-
-	#if 0
-	// rely only on defrag for now since WindowManagerHelper also keeps a global bitmap
-	CglFont::ReallocAtlases(true);
-	CBitmap::InitPool(configHandler->GetInt("TextureMemPoolSize"));
-	CglFont::ReallocAtlases(false);
-	#else
-	CBitmap::InitPool(configHandler->GetInt("TextureMemPoolSize"));
-	#endif
+	pRenderer->Reload();
 
 	LOG("[SpringApp::%s][8]", __func__);
 
@@ -743,7 +645,7 @@ void SpringApp::Reload(const std::string script)
 		// if no script, drop back to menu
 		LoadSpringMenu();
 	} else {
-		activeController = RunScript(script);
+		CGameController::SetActiveController(RunScript(script));
 	}
 
 	LOG("[SpringApp::%s][13] reloadCount=%u\n\n\n", __func__, ++reloadCount);
@@ -758,22 +660,23 @@ bool SpringApp::Update()
 	bool swap = true;
 
 	configHandler->Update();
+	CGameController* activeController = CGameController::GetActiveController();
 
 	#if 0
 	if (activeController == nullptr)
 		return true;
 	if (!activeController->Update())
 		return false;
-	if (!activeController->Draw())
+	if (!pRenderer->Draw())
 		return true;
 	#else
 	// sic; Update can set the controller to null
 	retc = (        activeController == nullptr || activeController->Update());
-	swap = (retc && activeController != nullptr && activeController->Draw());
+	swap = (retc && activeController != nullptr && pRenderer->Draw());
 	#endif
 
 	// always swap by default, not doing so can upset some drivers
-	globalRendering->SwapBuffers(swap, false);
+	pRenderer->SwapBuffers(swap, false);
 	return retc;
 }
 
@@ -879,8 +782,7 @@ void SpringApp::Kill(bool fromRun)
 	LuaVFSDownload::Free(true);
 
 	// save window state early for the same reason as client demo
-	if (globalRendering != nullptr)
-		SaveWindowPosAndSize();
+	pRenderer->SaveWindowPosAndSize();
 	// see ::Reload
 	if (game != nullptr)
 		game->KillLua(false);
@@ -902,17 +804,7 @@ void SpringApp::Kill(bool fromRun)
 	spring::SafeDelete(clientNet);
 	spring::SafeDelete(gameServer);
 
-	LOG("[SpringApp::%s][4] font=%p", __func__, font);
-	#ifndef HEADLESS
-	spring::SafeDelete(agui::gui);
-	#endif
-	spring::SafeDelete(font);
-	spring::SafeDelete(smallFont);
-
 	LOG("[SpringApp::%s][5]", __func__);
-	CNamedTextures::Kill(true);
-
-	CCameraHandler::KillStatic();
 
 	CInfoConsole::KillStatic();
 	CMouseHandler::KillStatic();
@@ -922,9 +814,10 @@ void SpringApp::Kill(bool fromRun)
 	gu->Kill();
 
 	LOG("[SpringApp::%s][7]", __func__);
-	shaderHandler->ClearAll();
 
-	CGlobalRendering::KillStatic();
+	pRenderer->Kill();
+	delete pRenderer;
+	
 	CLuaSocketRestrictions::KillStatic();
 
 	// also gets rid of configHandler
@@ -941,154 +834,3 @@ void SpringApp::Kill(bool fromRun)
 }
 
 
-bool SpringApp::MainEventHandler(const SDL_Event& event)
-{
-	switch (event.type) {
-		case SDL_WINDOWEVENT: {
-			switch (event.window.event) {
-				case SDL_WINDOWEVENT_MOVED: {
-					SaveWindowPosAndSize();
-				} break;
-				// case SDL_WINDOWEVENT_RESIZED: // always preceded by CHANGED
-				case SDL_WINDOWEVENT_SIZE_CHANGED: {
-					LOG("%s", "");
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_SIZE_CHANGED][1] fullScreen=%d", __func__, globalRendering->fullScreen);
-
-					Watchdog::ClearTimer(WDT_MAIN, true);
-
-					{
-						ScopedOnceTimer timer("GlobalRendering::UpdateGL");
-
-						SaveWindowPosAndSize();
-						globalRendering->UpdateGLConfigs();
-						globalRendering->UpdateGLGeometry();
-						globalRendering->InitGLState();
-						UpdateInterfaceGeometry();
-					}
-					{
-						ScopedOnceTimer timer("ActiveController::ResizeEvent");
-
-						activeController->ResizeEvent();
-						mouseInput->InstallWndCallback();
-					}
-
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_SIZE_CHANGED][2]\n", __func__);
-				} break;
-				case SDL_WINDOWEVENT_MAXIMIZED:
-				case SDL_WINDOWEVENT_RESTORED:
-				case SDL_WINDOWEVENT_SHOWN: {
-					LOG("%s", "");
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_SHOWN][1] fullScreen=%d", __func__, globalRendering->fullScreen);
-
-					// reactivate sounds and other
-					globalRendering->active = true;
-
-					if (ISound::IsInitialized()) {
-						ScopedOnceTimer timer("Sound::Iconified");
-						sound->Iconified(false);
-					}
-
-					if (globalRendering->fullScreen) {
-						ScopedOnceTimer timer("FBO::GLContextReinit");
-						FBO::GLContextReinit();
-					}
-
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_SHOWN][2]\n", __func__);
-				} break;
-				case SDL_WINDOWEVENT_MINIMIZED:
-				case SDL_WINDOWEVENT_HIDDEN: {
-					LOG("%s", "");
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_HIDDEN][1] fullScreen=%d", __func__, globalRendering->fullScreen);
-
-					// deactivate sounds and other
-					globalRendering->active = false;
-
-					if (ISound::IsInitialized()) {
-						ScopedOnceTimer timer("Sound::Iconified");
-						sound->Iconified(true);
-					}
-
-					if (globalRendering->fullScreen) {
-						ScopedOnceTimer timer("FBO::GLContextLost");
-						FBO::GLContextLost();
-					}
-
-					LOG("[SpringApp::%s][SDL_WINDOWEVENT_HIDDEN][2]\n", __func__);
-				} break;
-
-				case SDL_WINDOWEVENT_FOCUS_GAINED: {
-					// update keydown table
-					KeyInput::Update(0, keyBindings.GetFakeMetaKey());
-				} break;
-				case SDL_WINDOWEVENT_FOCUS_LOST: {
-					Watchdog::ClearTimer(WDT_MAIN, true);
-
-					// SDL has some bug and does not update modstate on alt+tab/minimize etc.
-					//FIXME check if still happens with SDL2 (2013)
-					SDL_SetModState((SDL_Keymod)(SDL_GetModState() & (KMOD_NUM | KMOD_CAPS | KMOD_MODE)));
-
-					// release all keyboard keys
-					KeyInput::ReleaseAllKeys();
-
-					if (mouse != nullptr) {
-						// simulate mouse release to prevent hung buttons
-						for (int i = 1; i <= NUM_BUTTONS; ++i) {
-							if (!mouse->buttons[i].pressed)
-								continue;
-
-							SDL_Event event;
-							event.type = event.button.type = SDL_MOUSEBUTTONUP;
-							event.button.state = SDL_RELEASED;
-							event.button.which = 0;
-							event.button.button = i;
-							event.button.x = -1;
-							event.button.y = -1;
-							SDL_PushEvent(&event);
-						}
-
-						// unlock mouse
-						if (mouse->locked)
-							mouse->ToggleMiddleClickScroll();
-					}
-
-					// and make sure to un-capture mouse
-					globalRendering->SetWindowInputGrabbing(false);
-				} break;
-
-				case SDL_WINDOWEVENT_CLOSE: {
-					gu->globalQuit = true;
-				} break;
-			};
-		} break;
-		case SDL_QUIT: {
-			gu->globalQuit = true;
-		} break;
-		case SDL_TEXTEDITING: {
-			if (activeController != nullptr)
-				activeController->TextEditing(event.edit.text, event.edit.start, event.edit.length);
-
-		} break;
-		case SDL_TEXTINPUT: {
-			if (activeController != nullptr)
-				activeController->TextInput(event.text.text);
-
-		} break;
-		case SDL_KEYDOWN: {
-			KeyInput::Update(event.key.keysym.sym, keyBindings.GetFakeMetaKey());
-
-			if (activeController != nullptr)
-				activeController->KeyPressed(KeyInput::GetNormalizedKeySymbol(event.key.keysym.sym), event.key.repeat);
-
-		} break;
-		case SDL_KEYUP: {
-			KeyInput::Update(event.key.keysym.sym, keyBindings.GetFakeMetaKey());
-
-			if (activeController != nullptr) {
-				gameTextInput.ignoreNextChar = false;
-				activeController->KeyReleased(KeyInput::GetNormalizedKeySymbol(event.key.keysym.sym));
-			}
-		} break;
-	};
-
-	return false;
-}

@@ -18,7 +18,6 @@ class CLoadScreen : public CGameController
 public:
 	void SetLoadMessage(const std::string& text, bool replaceLast = false);
 
-	CLoadScreen(std::string&& mapFileName, std::string&& modFileName, ILoadSaveHandler* saveFile);
 	~CLoadScreen();
 
 	bool Init(); /// split from ctor; uses GetInstance()
@@ -43,6 +42,8 @@ public:
 
 
 private:
+	CLoadScreen(std::string&& mapFileName, std::string&& modFileName, ILoadSaveHandler* saveFile);
+
 	static CLoadScreen* singleton;
 
 	ILoadSaveHandler* saveFile;

@@ -23,10 +23,6 @@
 #include "Menu/LuaMenuController.h"
 #include "Net/GameServer.h"
 #include "Net/Protocol/NetProtocol.h"
-#ifndef HEADLESS
-#include "aGui/Gui.h"
-#endif
-#include "Rendering/Fonts/glFont.h"
 #include "Sim/Misc/GlobalSynced.h"
 #include "Sim/Misc/GlobalConstants.h"
 #include "Sim/Misc/TeamHandler.h"
@@ -72,7 +68,7 @@ CPreGame::CPreGame(std::shared_ptr<ClientSetup> setup)
 	assert(clientNet == nullptr);
 
 	clientNet = new CNetProtocol();
-	activeController = this;
+	CGameController::SetActiveController(this);
 
 #ifdef SYNCDEBUG
 	CSyncDebugger::GetInstance()->Initialize(clientSetup->isHost, 64); //FIXME: add actual number of player
@@ -92,11 +88,6 @@ CPreGame::CPreGame(std::shared_ptr<ClientSetup> setup)
 
 CPreGame::~CPreGame()
 {
-	#ifndef HEADLESS
-	// delete leftover aGUI elements but not infoconsole, it is reused by CGame
-	agui::gui->Clean();
-	#endif
-
 	pregame = nullptr;
 }
 
@@ -156,33 +147,6 @@ int CPreGame::KeyPressed(int k, bool isRepeat)
 	LOG("[PreGame::%s] user exited", __func__);
 	gu->globalQuit = true;
 	return 0;
-}
-
-
-bool CPreGame::Draw()
-{
-	spring_msecs(10).sleep(true);
-	ClearScreen();
-
-	if (!clientNet->Connected()) {
-		if (clientSetup->isHost)
-			font->glFormat(0.5f, 0.48f, 2.0f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Waiting for server to start");
-		else
-			font->glFormat(0.5f, 0.48f, 2.0f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Connecting to server (%ds)", (spring_gettime() - connectTimer).toSecsi());
-	} else {
-		font->glPrint(0.5f, 0.48f, 2.0f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Waiting for server response");
-	}
-
-	font->glFormat(0.60f, 0.40f, 1.0f, FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Connecting to: %s", clientNet->ConnectionStr().c_str());
-	font->glFormat(0.60f, 0.35f, 1.0f, FONT_SCALE | FONT_NORM | FONT_BUFFERED, "User name: %s", clientSetup->myPlayerName.c_str());
-
-	font->glFormat(0.5f, 0.25f, 0.8f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Press SHIFT + ESC to quit");
-	// credits
-	font->glFormat(0.5f, 0.06f, 1.0f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "Spring %s", SpringVersion::GetFull().c_str());
-	font->glPrint(0.5f, 0.02f, 0.6f, FONT_CENTER | FONT_SCALE | FONT_NORM | FONT_BUFFERED, "This program is distributed under the GNU General Public License, see doc/LICENSE for more info");
-	font->DrawBufferedGL4();
-
-	return true;
 }
 
 

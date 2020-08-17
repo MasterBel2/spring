@@ -8,6 +8,8 @@
 
 class ClientSetup;
 class CGameController;
+class Renderer;
+extern Renderer* pRenderer;
 
 union SDL_Event;
 
@@ -29,19 +31,13 @@ public:
 	static int PostKill(Threading::Error&&);
 	static void Kill(bool fromRun);                 //!< Shuts down application
 
-private:
-	static void UpdateInterfaceGeometry();
-	static void SaveWindowPosAndSize();
-
 public:
 	int Run();                                      //!< Run game loop
 
 private:
 	bool Init();                                    //!< Initializes engine
-	bool InitWindow(const char* title);             //!< Initializes window
 	bool InitPlatformLibs();
 	bool InitFileSystem();
-	bool MainEventHandler(const SDL_Event& ev);     //!< Handles SDL input events
 	bool Update();                                  //!< Run simulation and rendering
 
 	void ParseCmdLine(int argc, char* argv[]);      //!< Parse command line
@@ -61,13 +57,5 @@ private:
 	// and from thereon to GameServer if this client is also the host
 	std::shared_ptr<ClientSetup> clientSetup;
 };
-
-/**
- * @brief current active controller
- *
- * Pointer to the currently active controller
- * (could be a PreGame, could be a Game, etc)
- */
-extern CGameController* activeController;
 
 #endif

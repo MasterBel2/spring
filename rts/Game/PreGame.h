@@ -44,10 +44,13 @@ public:
 	void LoadDemoFile(const std::string& demo);
 	void LoadSaveFile(const std::string& save);
 
-	bool Draw() override;
+	bool Draw() override { return true; };
 	bool Update() override;
 
 	int KeyPressed(int k, bool isRepeat) override;
+
+	std::shared_ptr<ClientSetup> clientSetup;
+	spring_time connectTimer;
 
 private:
 	void AddMapArchivesToVFS(const CGameSetup* setup);
@@ -71,12 +74,9 @@ private:
 	We won't start until we received this (NULL until GameDataReceived)
 	*/
 	std::shared_ptr<GameData> gameData;
-	std::shared_ptr<ClientSetup> clientSetup;
 
 	std::string modFileName;
 	ILoadSaveHandler* saveFileHandler;
-
-	spring_time connectTimer;
 
 	bool wantDemo;
 };

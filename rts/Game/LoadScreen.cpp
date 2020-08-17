@@ -67,20 +67,17 @@ CLoadScreen::~CLoadScreen()
 		netHeartbeatThread.join();
 
 	if (!gu->globalQuit) {
-		activeController = game;
+		CGameController::SetActiveController(game);
 
 		if (luaMenu != nullptr)
 			luaMenu->ActivateGame();
 	}
-
-	if (activeController == this)
-		activeController = nullptr;
 }
 
 
 bool CLoadScreen::Init()
 {
-	activeController = this;
+	CGameController::SetActiveController(this);
 
 	// hide the cursor until we are ingame
 	SDL_ShowCursor(SDL_DISABLE);

@@ -118,5 +118,9 @@ set(sources_engine_Rendering
 		"${CMAKE_CURRENT_SOURCE_DIR}/Fonts/CFontTexture.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Fonts/glFont.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Fonts/TextWrap.cpp"
+
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/Renderer.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRenderer.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRPreGameScene.cpp"
 		PARENT_SCOPE
 	)
