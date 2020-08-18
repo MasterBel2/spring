@@ -5,6 +5,7 @@
 
 #include "Game/Game.h"
 #include "Game/PreGame.h"
+#include "Menu/LuaMenuController.h"
 #include "Rendering/Renderer/Scene.h"
 
 class Renderer;
@@ -34,6 +35,11 @@ class Renderer {
                 SetGameScene(pGame);
                 return;
             }
+            auto pLuaMenuController = dynamic_cast<CLuaMenuController*>(pGameController);
+            if (pLuaMenuController != nullptr) {
+                SetLuaMenuScene(pLuaMenuController);
+                return;
+            }
         }
         /**
          * @brief Allows custom PreGame scene creation by Renderer subclasses.
@@ -43,7 +49,11 @@ class Renderer {
          * @brief Allows custom Game scene creation by Renderer subclasses.
          */
         virtual void SetGameScene(CGame* pGame) {}
-        
+        /**
+         * @brief Allows custom LuaMenuController scene creation by Renderer subclasses.
+         */
+        virtual void SetLuaMenuScene(CLuaMenuController* pLuaMenuController) {}
+
         /** 
          * @brief Ends the previous scene (if not already ended) and stores 
          * the new scene as current.

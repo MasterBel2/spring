@@ -16,6 +16,7 @@ public:
     GLRenderer();
 
     void SetPreGameScene(CPreGame* pPreGame) override;
+    void SetLuaMenuScene(CLuaMenuController* pLuaMenuController) override;
 
     /** 
      * Basic initialisation and creates an SDL window 

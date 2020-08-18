@@ -23,7 +23,7 @@ public:
 	int TextInput(const std::string& utf8Text) override;
 	int TextEditing(const std::string& utf8, unsigned int start, unsigned int length) override;
 
-	bool Draw() override;
+	bool Draw() override { return true; };
 	void ResizeEvent() override;
 
 
@@ -31,9 +31,9 @@ public:
 	bool Valid() const { return !menuArchive.empty(); }
 	const std::string& GetMenuName() const { return menuArchive; }
 
+	spring_time lastDrawFrameTime;
 private:
 	std::string menuArchive;
-	spring_time lastDrawFrameTime;
 };
 
 extern CLuaMenuController* luaMenuController;

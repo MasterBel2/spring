@@ -1,5 +1,8 @@
+/* This file is part of the Spring engine (GPL v2 or later), see LICENSE.html */
+
 #include "Rendering/Renderer/Renderer.h"
 #include "Rendering/Renderer/GL/GLRPreGameScene.h"
+#include "Rendering/Renderer/GL/GLRLuaMenuScene.h"
 #include "Rendering/Renderer/GL/GLRenderer.h"
 
 #include <gflags/gflags.h>
@@ -38,6 +41,9 @@ GLRenderer::GLRenderer() {}
 
 void GLRenderer::SetPreGameScene(CPreGame* pPreGame) {
     SetScene(new GLRPreGameScene(pPreGame));
+}
+void GLRenderer::SetLuaMenuScene(CLuaMenuController* pLuaMenuController) {
+	SetScene(new GLRLuaMenuScene(pLuaMenuController));
 }
 
 /**
