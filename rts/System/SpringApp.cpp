@@ -39,7 +39,7 @@
 #include "Lua/LuaOpenGL.h"
 #include "Lua/LuaVFSDownload.h"
 #include "Menu/LuaMenuController.h"
-#include "Menu/SelectMenu.h"
+#include "Menu/GLRSelectMenuScene.h"
 #include "Net/GameServer.h"
 #include "Net/Protocol/NetProtocol.h" // clientNet
 #include "Sim/Misc/DefinitionTag.h" // DefType
@@ -214,14 +214,14 @@ bool SpringApp::Init()
 	Watchdog::RegisterThread(WDT_MAIN, true);
 
 	// Create Window
-	if (!pRenderer->InitWindow(("Spring " + SpringVersion::GetSync()).c_str())) {
+	if (!pRenderer->Init(("Spring " + SpringVersion::GetSync()).c_str())) {
 		return false;
 	}
 
-	pRenderer->PostWindowInit();
-
 	if (!InitFileSystem())
 		return false;
+
+	pRenderer->PostFileSystemInit();
 
 	// Multithreading & Affinity
 	Threading::SetThreadName("spring-main"); // set default threadname for pstree
@@ -483,8 +483,7 @@ void SpringApp::LoadSpringMenu()
 			"The headless version of the engine can not be run in interactive mode.\n"
 			"Please supply a start-script, save- or demo-file.", "ERROR", MBF_OK | MBF_EXCL);
 		#else
-		// not a memory-leak: SelectMenu deletes itself on start
-		CGameController::SetActiveController(new SelectMenu(clientSetup));
+		pRenderer->SetSelectMenuScene(clientSetup);
 		#endif
 	} else {
 		// run custom menu from game and map
@@ -672,11 +671,9 @@ bool SpringApp::Update()
 	#else
 	// sic; Update can set the controller to null
 	retc = (        activeController == nullptr || activeController->Update());
-	swap = (retc && activeController != nullptr && pRenderer->Draw());
+	pRenderer->Draw();
 	#endif
 
-	// always swap by default, not doing so can upset some drivers
-	pRenderer->SwapBuffers(swap, false);
 	return retc;
 }
 

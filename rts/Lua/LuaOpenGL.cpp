@@ -2667,7 +2667,7 @@ int LuaOpenGL::SwapBuffers(lua_State* L)
 	if (!CLuaHandle::GetHandle(L)->PersistOnReload())
 		return 0;
 
-	globalRendering->SwapBuffers(true, true);
+	globalRendering->SwapBuffers(true);
 	return 0;
 }
 

@@ -287,7 +287,7 @@ bool CLoadScreen::Draw()
 	}
 
 	if (!mtLoading)
-		globalRendering->SwapBuffers(true, false);
+		globalRendering->SwapBuffers(false);
 
 	return true;
 }

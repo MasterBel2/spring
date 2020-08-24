@@ -579,7 +579,7 @@ uint64_t CGlobalRendering::CalcGLDeltaTime(uint32_t queryIdx0, uint32_t queryIdx
 }
 
 
-void CGlobalRendering::SwapBuffers(bool allowSwapBuffers, bool clearErrors)
+void CGlobalRendering::SwapBuffers(bool clearErrors)
 {
 	SCOPED_TIMER("Misc::SwapBuffers");
 	assert(sdlWindows[0] != nullptr);

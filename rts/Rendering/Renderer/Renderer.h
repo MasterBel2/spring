@@ -7,6 +7,7 @@
 #include "Game/PreGame.h"
 #include "Menu/LuaMenuController.h"
 #include "Rendering/Renderer/Scene.h"
+#include "System/Log/ILog.h"
 
 class Renderer;
 // Base renderer does nothing; we'll refer to that as a "Headless" renderer for clarity.
@@ -41,6 +42,14 @@ class Renderer {
                 return;
             }
         }
+
+        /**
+         * @brief Allows custom SelectMenu scene creation by Renderer subclasses.
+         * 
+         * The select menu scene does not have an associated game controller and 
+         * 
+         */
+        virtual void SetSelectMenuScene(std::shared_ptr<ClientSetup> clientSetup) {}
         /**
          * @brief Allows custom PreGame scene creation by Renderer subclasses.
          */
@@ -77,17 +86,19 @@ class Renderer {
         }
 
         /**
-         * @brief Initializes the game window
+         * @brief Initializes the game window, rendering API, 
+         * and associated components.
          * 
-         * @return whether window initialization succeeded
-         * @param title char* string with window title
+         * @return whether initialization succeeded
+         * @param windowTitle char* a human-readable title to assign to the window
          */
-        virtual bool InitWindow(const char* title) { return true; }
+        virtual bool Init(const char* windowTitle) { return true; }
         /**
-         * @brief Initialises the actual rendering system after the window
-         * has been created.
+         * @brief Initialises components that depend on the VFS.
+         * 
+         * Must be called after the VFS has been initialised.
          */
-        virtual void PostWindowInit() {}
+        virtual void PostFileSystemInit() {}
         /**
          * @brief Forwards interface updates to interface components to allow 
          * them to dynamically resize.
@@ -103,9 +114,9 @@ class Renderer {
         /**
          * @brief Instructs the renderer to swap buffers.
          * 
-         * This should be at the discretion of the renderer, and removed from the Renderer parent class.
+         * This should happen at the discretion of the renderer.
          */
-        virtual void SwapBuffers(bool allowSwapBuffers, bool clearErrors) {} // (Currently described in GlobalRendering)
+        virtual void SwapBuffers(bool clearErrors) {} // (Currently described in GlobalRendering)
 
         /**
          * @brief Caches window position and size for next launch.
@@ -136,10 +147,12 @@ class Renderer {
          * @brief Instructs the current scene to draw a frame.
          */
         bool Draw() { 
+            bool result = true;
             if (currentScene != nullptr) {
-                return currentScene->Draw(); 
+                result = currentScene->Draw(); 
             }
-            return true;
+            SwapBuffers(false);
+            return result;
         }
     private:
         /** 

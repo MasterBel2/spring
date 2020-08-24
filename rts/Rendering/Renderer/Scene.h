@@ -15,8 +15,8 @@ public:
      */
     virtual bool Draw() { return true; }
     /** 
-     * @brief Indicates that the controller associated with the scene is about to resign,
-     * so the scene must also resign.
+     * @brief Allows the scene to do an optional cleanup before 
+     * the associated controller resigns.
      */
     virtual void End() {};
 };

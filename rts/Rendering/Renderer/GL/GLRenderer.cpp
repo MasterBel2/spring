@@ -1,6 +1,7 @@
 /* This file is part of the Spring engine (GPL v2 or later), see LICENSE.html */
 
 #include "Rendering/Renderer/Renderer.h"
+#include "Menu/GLRSelectMenuScene.h"
 #include "Rendering/Renderer/GL/GLRPreGameScene.h"
 #include "Rendering/Renderer/GL/GLRLuaMenuScene.h"
 #include "Rendering/Renderer/GL/GLRenderer.h"
@@ -39,6 +40,9 @@ DEFINE_bool     (hidden,                                   false, "Start in back
 
 GLRenderer::GLRenderer() {}
 
+void GLRenderer::SetSelectMenuScene(std::shared_ptr<ClientSetup> clientSetup) {
+	SetScene(new GLRSelectMenuScene(clientSetup));
+}
 void GLRenderer::SetPreGameScene(CPreGame* pPreGame) {
     SetScene(new GLRPreGameScene(pPreGame));
 }
@@ -46,13 +50,7 @@ void GLRenderer::SetLuaMenuScene(CLuaMenuController* pLuaMenuController) {
 	SetScene(new GLRLuaMenuScene(pLuaMenuController));
 }
 
-/**
- * @return whether window initialization succeeded
- * @param title char* string with window title
- *
- * Initializes the game window
- */
-bool GLRenderer::InitWindow(const char* title) {
+bool GLRenderer::Init(const char* windowTitle) {
 	CGlobalRendering::InitStatic();
 	globalRendering->SetFullScreen(FLAGS_window, FLAGS_fullscreen);
 
@@ -60,7 +58,7 @@ bool GLRenderer::InitWindow(const char* title) {
 	Threading::SetThreadName("gpu-driver");
 
 	// raises an error-prompt in case of failure
-	if (!globalRendering->CreateWindowAndContext(title, FLAGS_hidden)) {
+	if (!globalRendering->CreateWindowAndContext(windowTitle, FLAGS_hidden)) {
         SDL_Quit();
 		return false;
     }
@@ -71,11 +69,8 @@ bool GLRenderer::InitWindow(const char* title) {
 
 	// any other thread spawned from the main-process should be `unknown`
 	Threading::SetThreadName("unknown");
-	return true;
-}
 
-void GLRenderer::PostWindowInit() {
-    globalRendering->PostInit();
+	globalRendering->PostInit();
 	globalRendering->UpdateGLConfigs();
 	globalRendering->UpdateGLGeometry();
 	globalRendering->InitGLState();
@@ -93,6 +88,10 @@ void GLRenderer::PostWindowInit() {
 
 	input.AddHandler(std::bind(&GLRenderer::MainEventHandler, this, std::placeholders::_1));
 
+	return true;
+}
+
+void GLRenderer::PostFileSystemInit() {
 	agui::gui = new agui::Gui();
 
     CNamedTextures::Init();
@@ -145,6 +144,9 @@ void GLRenderer::SaveWindowPosAndSize() {
 	globalRendering->ReadWindowPosAndSize();
 	globalRendering->SaveWindowPosAndSize();
 }
+void GLRenderer::SwapBuffers(bool clearErrors) {
+	globalRendering->SwapBuffers(clearErrors);
+}
 
 void GLRenderer::_ShowSplashScreen(const std::string& splashScreenFile, const std::string& springVersionStr, const std::function<bool()>& testDoneFunc) {
     ShowSplashScreen(splashScreenFile, springVersionStr, testDoneFunc);
@@ -176,8 +178,8 @@ bool GLRenderer::MainEventHandler(const SDL_Event& event) {
 					}
 					{
 						ScopedOnceTimer timer("ActiveController::ResizeEvent");
-
-						activeController->ResizeEvent();
+						if (activeController != nullptr)
+							activeController->ResizeEvent();
 						mouseInput->InstallWndCallback();
 					}
 

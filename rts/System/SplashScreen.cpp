@@ -254,7 +254,7 @@ void ShowSplashScreen(
 		font->DrawBufferedGL4();
 
 		// also swaps <buffer>
-		globalRendering->SwapBuffers(true, true);
+		globalRendering->SwapBuffers(true);
 
 		SDL_PollEvent(nullptr);
 	}

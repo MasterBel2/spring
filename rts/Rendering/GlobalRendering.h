@@ -47,7 +47,7 @@ public:
 	void SetGLTimeStamp(uint32_t queryIdx) const;
 	uint64_t CalcGLDeltaTime(uint32_t queryIdx0, uint32_t queryIdx1) const;
 
-	void SwapBuffers(bool allowSwapBuffers, bool clearErrors);
+	void SwapBuffers(bool clearErrors);
 
 	void MakeCurrentContext(bool hidden, bool secondary, bool clear);
 

@@ -1,6 +1,6 @@
 /* This file is part of the Spring engine (GPL v2 or later), see LICENSE.html */
 
-#include "SelectMenu.h"
+#include "GLRSelectMenuScene.h"
 
 #ifndef HEADLESS
 #include <SDL_keycode.h>
@@ -117,7 +117,7 @@ private:
 
 
 
-SelectMenu::SelectMenu(std::shared_ptr<ClientSetup> setup)
+GLRSelectMenuScene::GLRSelectMenuScene(std::shared_ptr<ClientSetup> setup)
 : GuiElement(nullptr)
 , clientSetup(setup)
 , conWindow(nullptr)
@@ -151,34 +151,34 @@ SelectMenu::SelectMenu(std::shared_ptr<ClientSetup> setup)
 		menu->SetBorder(true);
 		/*agui::TextElement* title = */new agui::TextElement("Spring " + SpringVersion::GetFull(), menu); // will be deleted in menu
 		Button* testGame = new Button("Test Game", menu);
-		testGame->Clicked.connect(std::bind(&SelectMenu::Single, this));
+		testGame->Clicked.connect(std::bind(&GLRSelectMenuScene::Single, this));
 
 		Button* playDemo = new Button("Play Demo", menu);
-		playDemo->Clicked.connect(std::bind(&SelectMenu::Demo, this));
+		playDemo->Clicked.connect(std::bind(&GLRSelectMenuScene::Demo, this));
 
 		userSetting = configHandler->GetString("LastSelectedSetting");
 		Button* editsettings = new Button("Edit Settings", menu);
-		editsettings->Clicked.connect(std::bind(&SelectMenu::ShowSettingsList, this));
+		editsettings->Clicked.connect(std::bind(&GLRSelectMenuScene::ShowSettingsList, this));
 
 		Button* directConnect = new Button("Direct Connect", menu);
-		directConnect->Clicked.connect(std::bind(&SelectMenu::ShowConnectWindow, this, true));
+		directConnect->Clicked.connect(std::bind(&GLRSelectMenuScene::ShowConnectWindow, this, true));
 
 		Button* quit = new Button("Quit", menu);
-		quit->Clicked.connect(std::bind(&SelectMenu::Quit, this));
+		quit->Clicked.connect(std::bind(&GLRSelectMenuScene::Quit, this));
 		background->GeometryChange();
 	}
 
 	ShowConnectWindow(!clientSetup->isHost);
 }
 
-SelectMenu::~SelectMenu()
+GLRSelectMenuScene::~GLRSelectMenuScene()
 {
 	ShowConnectWindow(false);
 	ShowSettingsWindow(false, "");
 	CleanWindow();
 }
 
-bool SelectMenu::Draw()
+bool GLRSelectMenuScene::Draw()
 {
 	spring_msecs(10).sleep(true);
 	ClearScreen();
@@ -188,7 +188,7 @@ bool SelectMenu::Draw()
 }
 
 
-void SelectMenu::Demo()
+void GLRSelectMenuScene::Demo()
 {
 	const std::function<void(const std::string&)> demoSelectedCB = [&](const std::string& userDemo) {
 		if (pregame != nullptr)
@@ -209,7 +209,7 @@ void SelectMenu::Demo()
 	}
 }
 
-void SelectMenu::Single()
+void GLRSelectMenuScene::Single()
 {
 	if (selw->userMod == SelectionWidget::NoModSelect) {
 		selw->ShowModList();
@@ -235,19 +235,19 @@ void SelectMenu::Single()
 	}
 }
 
-void SelectMenu::Quit()
+void GLRSelectMenuScene::Quit()
 {
 	gu->globalQuit = true;
 	return (agui::gui->RmElement(this));
 }
 
-void SelectMenu::ShowConnectWindow(bool show)
+void GLRSelectMenuScene::ShowConnectWindow(bool show)
 {
 	if (show && !conWindow)
 	{
 		conWindow = new ConnectWindow();
-		conWindow->Connect.connect(std::bind(&SelectMenu::DirectConnect, this, std::placeholders::_1));
-		conWindow->WantClose.connect(std::bind(&SelectMenu::ShowConnectWindow, this, false));
+		conWindow->Connect.connect(std::bind(&GLRSelectMenuScene::DirectConnect, this, std::placeholders::_1));
+		conWindow->WantClose.connect(std::bind(&GLRSelectMenuScene::ShowConnectWindow, this, false));
 	}
 	else if (!show && conWindow)
 	{
@@ -256,7 +256,7 @@ void SelectMenu::ShowConnectWindow(bool show)
 	}
 }
 
-void SelectMenu::ShowSettingsWindow(bool show, std::string name)
+void GLRSelectMenuScene::ShowSettingsWindow(bool show, std::string name)
 {
 	if (show) {
 		if (settingsWindow) {
@@ -264,8 +264,8 @@ void SelectMenu::ShowSettingsWindow(bool show, std::string name)
 			settingsWindow = nullptr;
 		}
 		settingsWindow = new SettingsWindow(name);
-		settingsWindow->OK.connect(std::bind(&SelectMenu::ShowSettingsWindow, this, false, std::placeholders::_1));
-		settingsWindow->WantClose.connect(std::bind(&SelectMenu::ShowSettingsWindow, this, false, ""));
+		settingsWindow->OK.connect(std::bind(&GLRSelectMenuScene::ShowSettingsWindow, this, false, std::placeholders::_1));
+		settingsWindow->WantClose.connect(std::bind(&GLRSelectMenuScene::ShowSettingsWindow, this, false, ""));
 	}
 	else if (!show && settingsWindow) {
 		agui::gui->RmElement(settingsWindow);
@@ -280,12 +280,12 @@ void SelectMenu::ShowSettingsWindow(bool show, std::string name)
 	}
 }
 
-void SelectMenu::ShowSettingsList()
+void GLRSelectMenuScene::ShowSettingsList()
 {
 	if (curSelect == nullptr) {
 		curSelect = new ListSelectWnd("Select setting");
-		curSelect->Selected.connect(std::bind(&SelectMenu::SelectSetting, this, std::placeholders::_1));
-		curSelect->WantClose.connect(std::bind(&SelectMenu::CleanWindow, this));
+		curSelect->Selected.connect(std::bind(&GLRSelectMenuScene::SelectSetting, this, std::placeholders::_1));
+		curSelect->WantClose.connect(std::bind(&GLRSelectMenuScene::CleanWindow, this));
 	}
 	curSelect->list->RemoveAllItems();
 
@@ -302,7 +302,7 @@ void SelectMenu::ShowSettingsList()
 	curSelect->list->RefreshQuery();
 }
 
-void SelectMenu::SelectSetting(std::string setting) {
+void GLRSelectMenuScene::SelectSetting(std::string setting) {
 	size_t p = setting.find(" = ");
 	if(p != std::string::npos)
 		setting = setting.substr(0, p);
@@ -311,7 +311,7 @@ void SelectMenu::SelectSetting(std::string setting) {
 	ShowSettingsWindow(true, userSetting);
 }
 
-void SelectMenu::CleanWindow() {
+void GLRSelectMenuScene::CleanWindow() {
 	if (curSelect) {
 		ShowSettingsWindow(false, "");
 		agui::gui->RmElement(curSelect);
@@ -319,7 +319,7 @@ void SelectMenu::CleanWindow() {
 	}
 }
 
-void SelectMenu::DirectConnect(const std::string& addr)
+void GLRSelectMenuScene::DirectConnect(const std::string& addr)
 {
 	configHandler->SetString("address", addr);
 
@@ -330,12 +330,12 @@ void SelectMenu::DirectConnect(const std::string& addr)
 	return (agui::gui->RmElement(this));
 }
 
-bool SelectMenu::HandleEventSelf(const SDL_Event& ev)
+bool GLRSelectMenuScene::HandleEventSelf(const SDL_Event& ev)
 {
 	switch (ev.type) {
 		case SDL_KEYDOWN: {
 			if (ev.key.keysym.sym == SDLK_ESCAPE) {
-				LOG("[SelectMenu] user exited");
+				LOG("[GLRSelectMenuScene] user exited");
 				Quit();
 			} else if (ev.key.keysym.sym == SDLK_RETURN) {
 				Single();

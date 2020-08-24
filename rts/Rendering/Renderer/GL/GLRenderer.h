@@ -15,39 +15,41 @@ class GLRenderer : public Renderer {
 public:
     GLRenderer();
 
+    void SetSelectMenuScene(std::shared_ptr<ClientSetup> clientSetup) override;
     void SetPreGameScene(CPreGame* pPreGame) override;
     void SetLuaMenuScene(CLuaMenuController* pLuaMenuController) override;
 
     /** 
      * Basic initialisation and creates an SDL window 
      */
-    bool InitWindow(const char* title);
+    bool Init(const char* windowTitle) override;
     /**
      * Does further initilisation after basic initialisation and window has been created.
      */
-    void PostWindowInit();
+    void PostFileSystemInit() override;
     /**
      * Reloads stored data (e.g. textures, shaders) 
      */
-    void Reload();
+    void Reload() override;
     /** Destroys the renderer in anticipation of program termination, and
      * caches some information for next launch (e.g. window position and size).
      */
-    void Kill();
+    void Kill() override;
 
     /**
      * Forwards interface updates to interface components to allow them to dynamically resize.
      */
-    void UpdateInterfaceGeometry();
+    void UpdateInterfaceGeometry() override;
     /**
      * Caches the window position and size for next launch.
      */
-    void SaveWindowPosAndSize(); 
+    void SaveWindowPosAndSize() override;
+    void SwapBuffers(bool clearErrors) override;
 
     /**
      * 
      */
-    void _ShowSplashScreen(const std::string& splashScreenFile, const std::string& springVersionStr, const std::function<bool()>& testDoneFunc);
+    void _ShowSplashScreen(const std::string& splashScreenFile, const std::string& springVersionStr, const std::function<bool()>& testDoneFunc) override;
 
 private:
     /**
