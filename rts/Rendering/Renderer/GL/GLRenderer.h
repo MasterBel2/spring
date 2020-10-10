@@ -18,6 +18,7 @@ public:
     void SetSelectMenuScene(std::shared_ptr<ClientSetup> clientSetup) override;
     void SetPreGameScene(CPreGame* pPreGame) override;
     void SetLuaMenuScene(CLuaMenuController* pLuaMenuController) override;
+    void SetGameScene(CGame* pGame) override;
 
     /** 
      * Basic initialisation and creates an SDL window 

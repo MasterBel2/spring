@@ -11,7 +11,6 @@
 #include "GameDrawMode.h"
 #include "GameJobDispatcher.h"
 #include "Game/UI/KeySet.h"
-#include "Rendering/WorldDrawer.h"
 #include "System/UnorderedMap.hpp"
 #include "System/creg/creg_cond.h"
 #include "System/Misc/SpringTime.h"
@@ -52,8 +51,6 @@ private:
 	void LoadDefs(LuaParser* defsParser);
 	void PreLoadSimulation(LuaParser* defsParser);
 	void PostLoadSimulation(LuaParser* defsParser);
-	void PreLoadRendering();
-	void PostLoadRendering();
 	void LoadInterface();
 	void LoadLua(bool onlySynced, bool onlyUnsynced);
 	void LoadSkirmishAIs();
@@ -61,7 +58,6 @@ private:
 	void PostLoad();
 
 	void KillMisc();
-	void KillRendering();
 	void KillInterface();
 	void KillSimulation();
 
@@ -102,12 +98,6 @@ public:
 private:
 	bool Draw() override;
 	bool Update() override;
-	bool UpdateUnsynced(const spring_time currentTime);
-
-	void DrawSkip(bool blackscreen = true);
-	void DrawInputReceivers();
-	void DrawInputText();
-	void DrawInterfaceWidgets();
 
 	/// Format and display a chat message received over network
 	void HandleChatMsg(const ChatMessage& msg);
@@ -207,8 +197,6 @@ private:
 
 	CTimedKeyChain curKeyChain;
 
-	CWorldDrawer worldDrawer;
-
 	/// <playerID, <packetCode, total bytes> >
 	spring::unordered_map<int, PlayerTrafficInfo> playerTraffic;
 
@@ -216,6 +204,8 @@ private:
 	ILoadSaveHandler* saveFileHandler;
 
 	std::atomic<bool> loadDone = {false};
+public:
+	// Accessed by GLRGameScene
 	std::atomic<bool> gameOver = {false};
 };
 

@@ -33,6 +33,7 @@
 #include "System/Platform/Threading.h"
 #include "System/SplashScreen.hpp"
 #include "aGui/Gui.h"
+#include "Rendering/Renderer/GL/GLRGameScene.hpp"
 
 DEFINE_bool     (fullscreen,                               false, "Run in fullscreen mode");
 DEFINE_bool     (window,                                   false, "Run in windowed mode");
@@ -48,6 +49,9 @@ void GLRenderer::SetPreGameScene(CPreGame* pPreGame) {
 }
 void GLRenderer::SetLuaMenuScene(CLuaMenuController* pLuaMenuController) {
 	SetScene(new GLRLuaMenuScene(pLuaMenuController));
+}
+void GLRenderer::SetGameScene(CGame* pGame) {
+	SetScene(new GLRGameScene(pGame));
 }
 
 bool GLRenderer::Init(const char* windowTitle) {

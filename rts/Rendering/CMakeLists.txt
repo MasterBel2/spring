@@ -123,5 +123,6 @@ set(sources_engine_Rendering
 		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRenderer.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRPreGameScene.cpp"
 		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRLuaMenuScene.cpp"
+		"${CMAKE_CURRENT_SOURCE_DIR}/Renderer/GL/GLRGameScene.cpp"
 		PARENT_SCOPE
 	)
